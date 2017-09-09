@@ -3,7 +3,7 @@ package arrays;
 import java.io.File;
 import java.io.IOException;
 
-@SuppressWarnings("unchecked") //
+@SuppressWarnings("unchecked")
 public class BBABuilder<T extends BBABuilder<T>> {
 
 	protected int size = 100;

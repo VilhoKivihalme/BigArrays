@@ -4,11 +4,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-//TODO: do not initialize first chunk! then a job can be continued from cache. TODO: way to continue a packed resource.
+import javax.activation.UnsupportedDataTypeException;
 
+//TODO: do not initialize first chunk! then a job can be continued from cache.
 public class BigByteArray{
 
 	/*
@@ -92,6 +94,9 @@ public class BigByteArray{
 	 */
 	public BigByteArray(int size, String id, File root, long chunksOnDisk, int chunksInMemory) throws IOException{
 		root = root == null ? new File("") : root;
+		if(!root.isDirectory()){
+			throw new IOException("root must be a directory!");
+		}
 		BigByteArray.setRoot(root, this);
 		String idtest = trimID(id);
 		if(ids.containsKey(idtest)){
@@ -298,16 +303,14 @@ public class BigByteArray{
 			}
 		}
 
-		Chunk c = loadOrCreateChunk(chunkIndex, chunkIndexy);
-		//		HashMap<Integer, Chunk> pls = chunks.get(chunkIndex);
-		//		if(pls == null){
-		//			HashMap<Integer, Chunk> pls2 = new HashMap<Integer, Chunk>();
-		//			pls2.put(chunkIndexy, c);
-		//			chunks.put(chunkIndex, pls2);
-		//		}else{
-		//			pls.put(chunkIndexy, c);
-		//		}
-		connectChunkReferences(c);
+		Chunk c = new Chunk(chunkIndex, chunkIndexy, SIZE);
+		try{
+			c = loadOrCreateChunk(chunkIndex, chunkIndexy);
+			connectChunkReferences(c);
+		}catch (Exception e){
+			// TODO This should be thrown further.
+			e.printStackTrace();
+		}
 
 		return c;
 
@@ -328,7 +331,7 @@ public class BigByteArray{
 			int a = getChunkIndex(x);
 			int b = getChunkIndex(y);
 			String name = a + "," + b;
-			File f = new File(chunkCacheRoot.getAbsolutePath() + "/" + name);
+			File f = new File(FileUtils.pathAssureSlash(chunkCacheRoot.getAbsolutePath()) + name);
 			return f.exists();
 		}
 	}
@@ -408,21 +411,23 @@ public class BigByteArray{
 	 *
 	 * @param path
 	 * @return
+	 * @throws Exception
 	 */
-	private Chunk loadOrCreateChunk(int x, int y){
+	private Chunk loadOrCreateChunk(int x, int y) throws Exception{
 		//Return new chunk if there is nothing on disk.
 		int xx = getChunkIndex(x);
 		int yy = getChunkIndex(y);
-		Chunk c = new Chunk(xx, yy, SIZE);
-		System.out.println("loading..");
+		Chunk c = new Chunk(xx, yy, SIZE); //empty chunk is created for the index
+		//if disk has not been accessed yet, no need to try and load a file
 		if(!diskUsed){
 			chunksCreated++;
 			return c;
 		}
-		File f = new File(chunkCacheRoot.getAbsolutePath() + "/" + xx + "," + yy);
+		File f = new File(FileUtils.pathAssureSlash(chunkCacheRoot.getAbsolutePath()) + xx + "," + yy);
+		//if disk is used and spesific file is found
 		if(f.exists()){
 			try{
-				byte[] bytes = Files.readAllBytes(f.toPath());
+				byte[] bytes = loadData(f.toPath());
 				// System.out.println(bytes.length);
 				byte[][] chunk = new byte[SIZE][SIZE];
 				int byteIndex = 0;
@@ -442,10 +447,15 @@ public class BigByteArray{
 			}
 			diskUsed = true;
 		}
-		if(diskUsed){
-			System.out.println("OKS");
-		}
 		return c;
+	}
+
+	private byte[] loadData(Path path) throws Exception{
+		byte[] bytes = Files.readAllBytes(path);
+		if(bytes.length != SIZE * SIZE){
+			throw new UnsupportedDataTypeException("Data size: " + bytes.length + " expected: " + (SIZE * SIZE));
+		}
+		return null;
 	}
 
 	/**
@@ -454,7 +464,7 @@ public class BigByteArray{
 	 * @param chunk
 	 * @param fileName
 	 */
-	private void saveChunk(byte[][] chunk, String fileName){
+	private void saveChunk(byte[][] chunk, String fileName) throws Exception{
 		diskUsed = true;
 		File f = new File(fileName);
 		System.out.println(fileName);
@@ -464,17 +474,13 @@ public class BigByteArray{
 			f.mkdirs();
 			f.delete();// horrible workaround
 		}
-		try{
-			FileOutputStream fos = new FileOutputStream(f);
-			for(int i = 0; i < chunk.length; i++){
-				fos.write(chunk[i]);
-			}
-			fos.close();
-		}catch (IOException e){
-			e.printStackTrace();
-			System.err.println("Chunk writing has failed. Unable to continue. Closing Thread..");
 
+		FileOutputStream fos = new FileOutputStream(f);
+		for(int i = 0; i < chunk.length; i++){
+			fos.write(chunk[i]);
 		}
+		fos.close();
+
 	}
 
 	/**
@@ -532,7 +538,7 @@ public class BigByteArray{
 	/**
 	 * Clean loaded chunks and save rest of them to disk.
 	 */
-	public void dump(){
+	public void dump() throws Exception{
 		cleanLoadedChunks();
 		for(Chunk c : chunks){
 			saveChunk(c.data, chunkCacheRoot + id + "/" + (c.lowerLeftX) + "," + (c.lowerLeftY));
@@ -540,11 +546,11 @@ public class BigByteArray{
 	}
 
 	public void convert(int toSize){
-		System.out.println("convert not implemented");
+		System.out.println("TODO: convert not implemented");
 	}
 
 	public void trim(int minx, int miny, int maxx, int maxy){
-		System.out.println("trim not implemented");
+		System.out.println("TODO: trim not implemented");
 	}
 	//---------------- STATIC METHODS -----------------------//
 
@@ -745,6 +751,28 @@ public class BigByteArray{
 		LRU, //Least recently used
 		FIFO, //first in first out
 		RR; //random replacement
+	}
+
+	/*
+	 * copy of my own file utils class with relevant functions added here to
+	 * avoid dependency.
+	 */
+	private static class FileUtils{
+
+		public static String pathRemoveSlash(String path){
+			if(path.endsWith("/") || path.endsWith("\\")){
+				return path.substring(0, path.length() - 1);
+			}
+			return path;
+		}
+
+		public static String pathAssureSlash(String path){
+			if(!path.endsWith("/") && !path.endsWith("\\")){
+				return path + "/";
+			}
+			return path;
+		}
+
 	}
 
 }
