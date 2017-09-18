@@ -88,6 +88,8 @@ public class BigByteArray{
 
 	//-----------------CONSTRUCTORS-----------------//
 
+	private long iteration = 0;
+
 	/*
 	 * Initializes a BigByteArray of certain size and id. Using of BBABuilder is
 	 * recommended.
@@ -186,6 +188,8 @@ public class BigByteArray{
 		current = c;
 		c.data[xx][yy] = value;
 
+		c.lastUsed = iteration;
+		iteration++;
 	}
 
 	/**
@@ -202,6 +206,8 @@ public class BigByteArray{
 		int yy = getCoordinateOnChunk(y, c.lowerLeftY);
 		current = c;
 		c.data[xx][yy]++;
+		c.lastUsed = iteration;
+		iteration++;
 
 	}
 
@@ -219,7 +225,8 @@ public class BigByteArray{
 		int yy = getCoordinateOnChunk(y, c.lowerLeftY);
 		current = c;
 		c.data[xx][yy]--;
-
+		c.lastUsed = iteration;
+		iteration++;
 	}
 
 	/**
@@ -231,6 +238,8 @@ public class BigByteArray{
 		int xx = getCoordinateOnChunk(x, c.lowerLeftX);
 		int yy = getCoordinateOnChunk(y, c.lowerLeftY);
 		current = c;
+		c.lastUsed = iteration;
+		iteration++;
 		return c.data[xx][yy];
 	}
 
