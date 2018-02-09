@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 @SuppressWarnings("unchecked")
-public class BBABuilder<T extends BBABuilder<T>> {
+public abstract class BBABuilder<T extends BBABuilder<T>> {
 
 	protected int size = 100;
 	protected String id = "default_ID_" + System.nanoTime();

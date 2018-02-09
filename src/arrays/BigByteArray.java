@@ -86,9 +86,12 @@ public class BigByteArray{
 	 */
 	private boolean zeroIndexed;// = false;
 
-	//-----------------CONSTRUCTORS-----------------//
-
+	/*
+	 * How many times this map has been accessed.
+	 */
 	private long iteration = 0;
+
+	//-----------------CONSTRUCTORS-----------------//
 
 	/*
 	 * Initializes a BigByteArray of certain size and id. Using of BBABuilder is
@@ -286,10 +289,14 @@ public class BigByteArray{
 
 	}
 
+	/*
+	 * Returns a chunk where certain x y coordinate lies.
+	 */
 	private Chunk findChunk(int x, int y){
 		if(current.contains(x, y)){
 			return current;
 		}
+		//special cases where it is within the current's neighbor.
 		if(current.up.contains(x, y)){
 			return current;
 		}
@@ -306,12 +313,14 @@ public class BigByteArray{
 		int chunkIndex = getChunkIndex(x);
 		int chunkIndexy = getChunkIndex(y);
 
+		//iterate rest of the chunks
 		for(Chunk c : chunks){
 			if(c.contains(x, y)){
 				return c;
 			}
 		}
 
+		//not found, so we shall make a new one.
 		Chunk c = new Chunk(chunkIndex, chunkIndexy, SIZE);
 		try{
 			c = loadOrCreateChunk(chunkIndex, chunkIndexy);
@@ -326,7 +335,7 @@ public class BigByteArray{
 	}
 
 	/**
-	 * checks if there exists a file
+	 * checks if there exists a file for specific coordinates.
 	 * 
 	 * @param x
 	 * @param y
@@ -410,6 +419,7 @@ public class BigByteArray{
 				toRemove.add(cn);
 			}
 		}
+
 		for(Chunk r : toRemove){
 			chunks.remove(r);
 		}
@@ -559,7 +569,17 @@ public class BigByteArray{
 	}
 
 	public void trim(int minx, int miny, int maxx, int maxy){
+		//todo: for all chunks on disk, if they are not within area, delete.
+		//todo: for all chunks on disk, if they are partially on area, set remaining parts to zero.
 		System.out.println("TODO: trim not implemented");
+	}
+
+	/*
+	 * wtf
+	 */
+	public byte[] zip(boolean getBytes, boolean toDisk){
+		byte[] bytes = new byte[0];
+		return getBytes ? bytes : null;
 	}
 	//---------------- STATIC METHODS -----------------------//
 
@@ -763,19 +783,18 @@ public class BigByteArray{
 	}
 
 	/*
-	 * copy of my own file utils class with relevant functions added here to
-	 * avoid dependency.
+	 * For assuring path integrity
 	 */
 	private static class FileUtils{
 
-		public static String pathRemoveSlash(String path){
+		private static String pathRemoveSlash(String path){
 			if(path.endsWith("/") || path.endsWith("\\")){
 				return path.substring(0, path.length() - 1);
 			}
 			return path;
 		}
 
-		public static String pathAssureSlash(String path){
+		private static String pathAssureSlash(String path){
 			if(!path.endsWith("/") && !path.endsWith("\\")){
 				return path + "/";
 			}
