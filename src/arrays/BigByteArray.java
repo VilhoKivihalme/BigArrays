@@ -100,9 +100,9 @@ public class BigByteArray{
 	public BigByteArray(int size, String id, File root, long chunksOnDisk, int chunksInMemory) throws IOException{
 		root = root == null ? new File("") : root;
 		if(!root.isDirectory()){
-			throw new IOException("root must be a directory!");
+			//		XXX	throw new IOException("root must be a directory!");
 		}
-		BigByteArray.setRoot(root, this);
+		//	XXX	BigByteArray.setRoot(root, this);
 		String idtest = trimID(id);
 		if(ids.containsKey(idtest)){
 			throw new IllegalArgumentException("Duplicate id:" + id);
@@ -675,6 +675,10 @@ public class BigByteArray{
 
 		public int getX(){
 			return lowerLeftX;
+		}
+
+		public int getSize(){
+			return size;
 		}
 
 		public void setIndexx(int indexx){
