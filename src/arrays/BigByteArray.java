@@ -97,7 +97,7 @@ public class BigByteArray{
 	 * Initializes a BigByteArray of certain size and id. Using of BBABuilder is
 	 * recommended.
 	 */
-	public BigByteArray(int size, String id, File root, long chunksOnDisk, int chunksInMemory) throws IOException{
+	public BigByteArray(int size, String id, File root, long chunksOnDisk, int chunksInMemory, byte defaultValue) throws IOException{
 		root = root == null ? new File("") : root;
 		if(!root.isDirectory()){
 			//		XXX	throw new IOException("root must be a directory!");
@@ -117,21 +117,21 @@ public class BigByteArray{
 	 * Initializes a BigByteArray of certain size and id.
 	 */
 	public BigByteArray(int size, String id) throws IOException{
-		this(size, id, null, -1, -1);
+		this(size, id, null, -1, -1, (byte) 0);
 	}
 
 	/*
 	 * Initializes a BigByteArray of certain size and id.
 	 */
 	public BigByteArray(String id) throws IOException{
-		this(DEFAULT_CHUNKSIZE, id, null, -1, -1);
+		this(DEFAULT_CHUNKSIZE, id, null, -1, -1, (byte) 0);
 	}
 
 	/*
 	 * Initializes a BigByteArray of certain size.
 	 */
 	public BigByteArray(int size) throws IOException{
-		this(size, "default_id_" + System.currentTimeMillis() + "", null, -1, -1);
+		this(size, "default_id_" + System.currentTimeMillis() + "", null, -1, -1, (byte) 0);
 	}
 
 	//---------------- SETUP METHODS------------------//
