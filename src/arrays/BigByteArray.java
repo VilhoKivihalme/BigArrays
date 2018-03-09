@@ -10,8 +10,10 @@ import java.util.LinkedList;
 
 import javax.activation.UnsupportedDataTypeException;
 
-//TODO: do not initialize first chunk! then a job can be continued from cache.
-public class BigByteArray{
+import javafx.application.Platform;
+
+// TODO: do not initialize first chunk! then a job can be continued from cache.
+public class BigByteArray {
 
 	/*
 	 * default dimensions for chunks
@@ -91,18 +93,23 @@ public class BigByteArray{
 	 */
 	private long iteration = 0;
 
-	//-----------------CONSTRUCTORS-----------------//
+	private byte chunkDefaultValue;
+	// -----------------CONSTRUCTORS-----------------//
 
 	/*
 	 * Initializes a BigByteArray of certain size and id. Using of BBABuilder is
 	 * recommended.
 	 */
 	public BigByteArray(int size, String id, File root, long chunksOnDisk, int chunksInMemory, byte defaultValue) throws IOException{
-		root = root == null ? new File("") : root;
-		if(!root.isDirectory()){
-			//		XXX	throw new IOException("root must be a directory!");
+		System.out.println("init with " + defaultValue);
+		if(root != null){
+			if(!root.isDirectory()){
+				// XXX throw new IOException("root must be a directory!");
+			}
+		}else{
+			chunksOnDisk = 0;
 		}
-		//	XXX	BigByteArray.setRoot(root, this);
+		// XXX BigByteArray.setRoot(root, this);
 		String idtest = trimID(id);
 		if(ids.containsKey(idtest)){
 			throw new IllegalArgumentException("Duplicate id:" + id);
@@ -110,7 +117,10 @@ public class BigByteArray{
 		this.id = idtest;
 		this.SIZE = size % 2 == 0 ? size : size + 1;
 		this.chunkCacheRoot = root;
+
+		this.chunkDefaultValue = defaultValue;
 		init();
+		System.out.println(chunkDefaultValue);
 	}
 
 	/*
@@ -121,7 +131,7 @@ public class BigByteArray{
 	}
 
 	/*
-	 * Initializes a BigByteArray of certain size and id.
+	 * Initializes a BigByteArray of certain id.
 	 */
 	public BigByteArray(String id) throws IOException{
 		this(DEFAULT_CHUNKSIZE, id, null, -1, -1, (byte) 0);
@@ -131,26 +141,29 @@ public class BigByteArray{
 	 * Initializes a BigByteArray of certain size.
 	 */
 	public BigByteArray(int size) throws IOException{
-		this(size, "default_id_" + System.currentTimeMillis() + "", null, -1, -1, (byte) 0);
+
+		this(size, "default_id_" + System.nanoTime(), null, -1, -1, (byte) 0);
 	}
 
-	//---------------- SETUP METHODS------------------//
+	// ---------------- SETUP METHODS------------------//
 
 	/*
 	 * initializes some settings
 	 */
 	private void init(){
-		Chunk current = new Chunk(0 - SIZE / 2, 0 - SIZE / 2, SIZE);
+		Chunk c = new Chunk(0 - SIZE / 2, 0 - SIZE
+				/ 2, SIZE, chunkDefaultValue);
 		chunksCreated = 1;
 		chunks = new LinkedList<Chunk>();
-		this.current = current;
+		chunks.add(c);
+		this.current = c;
 	}
 
 	public void setLoadedChunkLimit(int i){
+
 		if(i == 0){
 			i = 1;
-		}
-		if(i < 0){
+		}else if(i < 0){
 			i = -1;
 		}
 		maxChunksLoaded = i;
@@ -172,7 +185,7 @@ public class BigByteArray{
 		maxChunksOnDisk = i;
 	}
 
-	//----------------METHODS------------------//
+	// ----------------METHODS------------------//
 
 	/**
 	 * sets data to a single field. Can be slow if data is set randomly, because
@@ -296,7 +309,7 @@ public class BigByteArray{
 		if(current.contains(x, y)){
 			return current;
 		}
-		//special cases where it is within the current's neighbor.
+		// special cases where it is within the current's neighbor.
 		if(current.up.contains(x, y)){
 			return current;
 		}
@@ -313,15 +326,15 @@ public class BigByteArray{
 		int chunkIndex = getChunkIndex(x);
 		int chunkIndexy = getChunkIndex(y);
 
-		//iterate rest of the chunks
+		// iterate rest of the chunks
 		for(Chunk c : chunks){
 			if(c.contains(x, y)){
 				return c;
 			}
 		}
 
-		//not found, so we shall make a new one.
-		Chunk c = new Chunk(chunkIndex, chunkIndexy, SIZE);
+		// not found, so we shall make a new one.
+		Chunk c = new Chunk(chunkIndex, chunkIndexy, SIZE, chunkDefaultValue);
 		try{
 			c = loadOrCreateChunk(chunkIndex, chunkIndexy);
 			connectChunkReferences(c);
@@ -345,13 +358,14 @@ public class BigByteArray{
 
 		if(!diskUsed){
 			return false;
-		}else{
-			int a = getChunkIndex(x);
-			int b = getChunkIndex(y);
-			String name = a + "," + b;
-			File f = new File(FileUtils.pathAssureSlash(chunkCacheRoot.getAbsolutePath()) + name);
-			return f.exists();
 		}
+		int a = getChunkIndex(x);
+		int b = getChunkIndex(y);
+		String name = a + "," + b;
+		File f = new File(FileUtils.pathAssureSlash(chunkCacheRoot.getAbsolutePath())
+				+ name);
+		return f.exists();
+
 	}
 
 	/**
@@ -360,6 +374,7 @@ public class BigByteArray{
 	 * @return
 	 */
 	public LinkedList<Chunk> getChunks(){
+		// System.out.println("returning chnks" + chunks.size());
 		return chunks;
 	}
 
@@ -413,7 +428,7 @@ public class BigByteArray{
 				}
 			}
 
-			//if chunk is to be deleted, remove references from adjacent chunks
+			// if chunk is to be deleted, remove references from adjacent chunks
 			if(cn.empty){
 				cn.disconnect();
 				toRemove.add(cn);
@@ -432,18 +447,22 @@ public class BigByteArray{
 	 * @return
 	 * @throws Exception
 	 */
-	private Chunk loadOrCreateChunk(int x, int y) throws Exception{
-		//Return new chunk if there is nothing on disk.
+	protected Chunk loadOrCreateChunk(int x, int y) throws Exception{
+		// Return new chunk if there is nothing on disk.
 		int xx = getChunkIndex(x);
 		int yy = getChunkIndex(y);
-		Chunk c = new Chunk(xx, yy, SIZE); //empty chunk is created for the index
-		//if disk has not been accessed yet, no need to try and load a file
+		Chunk c = new Chunk(xx, yy, SIZE, chunkDefaultValue); // empty chunk is
+																// created for
+																// the
+		// index
+		// if disk has not been accessed yet, no need to try and load a file
 		if(!diskUsed){
 			chunksCreated++;
 			return c;
 		}
-		File f = new File(FileUtils.pathAssureSlash(chunkCacheRoot.getAbsolutePath()) + xx + "," + yy);
-		//if disk is used and spesific file is found
+		File f = new File(FileUtils.pathAssureSlash(chunkCacheRoot.getAbsolutePath())
+				+ xx + "," + yy);
+		// if disk is used and spesific file is found
 		if(f.exists()){
 			try{
 				byte[] bytes = loadData(f.toPath());
@@ -472,7 +491,8 @@ public class BigByteArray{
 	private byte[] loadData(Path path) throws Exception{
 		byte[] bytes = Files.readAllBytes(path);
 		if(bytes.length != SIZE * SIZE){
-			throw new UnsupportedDataTypeException("Data size: " + bytes.length + " expected: " + (SIZE * SIZE));
+			throw new UnsupportedDataTypeException("Data size: " + bytes.length
+					+ " expected: " + (SIZE * SIZE));
 		}
 		return null;
 	}
@@ -509,7 +529,8 @@ public class BigByteArray{
 	 */
 	public void clearData(String id){
 		chunks = new LinkedList<Chunk>();
-		current = new Chunk(0 - SIZE / 2, 0 - SIZE / 2, SIZE);
+		current = new Chunk(0 - SIZE / 2, 0 - SIZE
+				/ 2, SIZE, chunkDefaultValue);
 		chunks.add(current);
 
 		File f = new File(chunkCacheRoot + id);
@@ -524,26 +545,27 @@ public class BigByteArray{
 		f.delete();
 	}
 
-	//	@Deprecated
+	// @Deprecated
 	/*
 	 * just get the name from parameters that are inside chunknode.
 	 */
-	//	private String getFileName(int x, int y){
-	//		String name = "";
-	//		if(x >= 0){
-	//			name += x - x % SIZE + ",";
-	//		}else{
-	//			name += ((1 + x) / SIZE - 1) * SIZE + ","; // this might be a bit odd and might not work with everything
+	// private String getFileName(int x, int y){
+	// String name = "";
+	// if(x >= 0){
+	// name += x - x % SIZE + ",";
+	// }else{
+	// name += ((1 + x) / SIZE - 1) * SIZE + ","; // this might be a bit odd and
+	// might not work with everything
 	//
-	//		}
-	//		if(y >= 0){
-	//			name += y - y % SIZE;
-	//		}else{
-	//			name += ((1 + y) / SIZE - 1) * SIZE;
-	//		}
+	// }
+	// if(y >= 0){
+	// name += y - y % SIZE;
+	// }else{
+	// name += ((1 + y) / SIZE - 1) * SIZE;
+	// }
 	//
-	//		return name;
-	//	}
+	// return name;
+	// }
 
 	/**
 	 * Returns the total raw size of bytes for this byte array
@@ -560,7 +582,8 @@ public class BigByteArray{
 	public void dump() throws Exception{
 		cleanLoadedChunks();
 		for(Chunk c : chunks){
-			saveChunk(c.data, chunkCacheRoot + id + "/" + (c.lowerLeftX) + "," + (c.lowerLeftY));
+			saveChunk(c.data, chunkCacheRoot + id + "/" + (c.lowerLeftX) + ","
+					+ (c.lowerLeftY));
 		}
 	}
 
@@ -569,8 +592,9 @@ public class BigByteArray{
 	}
 
 	public void trim(int minx, int miny, int maxx, int maxy){
-		//todo: for all chunks on disk, if they are not within area, delete.
-		//todo: for all chunks on disk, if they are partially on area, set remaining parts to zero.
+		// todo: for all chunks on disk, if they are not within area, delete.
+		// todo: for all chunks on disk, if they are partially on area, set
+		// remaining parts to zero.
 		System.out.println("TODO: trim not implemented");
 	}
 
@@ -581,7 +605,7 @@ public class BigByteArray{
 		byte[] bytes = new byte[0];
 		return getBytes ? bytes : null;
 	}
-	//---------------- STATIC METHODS -----------------------//
+	// ---------------- STATIC METHODS -----------------------//
 
 	/**
 	 * sets root for chunk data. for a certain BigByteArray. This method is
@@ -592,14 +616,16 @@ public class BigByteArray{
 	 * @param ref
 	 *            the ByteArray calling the method
 	 */
-	private static synchronized void setRoot(File root, BigByteArray ref) throws IOException{
+	private static synchronized void setRoot(File root, BigByteArray ref)
+			throws IOException{
 
 		if(root.exists() && root.isFile())
 			throw new IOException("root must be a directory!");
 		if(!root.exists()){
 			boolean success = root.mkdirs();
 			if(!success){
-				throw new IOException("Root could not be created! Path: " + root.getAbsolutePath());
+				throw new IOException("Root could not be created! Path: "
+						+ root.getAbsolutePath());
 			}
 		}
 		ref.chunkCacheRoot = root;
@@ -615,7 +641,7 @@ public class BigByteArray{
 		return id.replaceAll(idRegex, "");
 	}
 
-	//---------------- CHUNK CLASS-----------------------//
+	// ---------------- CHUNK CLASS-----------------------//
 
 	/**
 	 * Represents a single array in the (in)finite grid. Has references to
@@ -624,10 +650,22 @@ public class BigByteArray{
 	 * @author Vilho
 	 *
 	 */
-	public class Chunk{
+	public class Chunk {
 
-		public Chunk(int i, int j, int size){
+		public byte defaultValue;
+
+		public Chunk(int i, int j, int size, byte defaultValue){
+			System.out.println("default:" + defaultValue);
+			if(defaultValue == 0){
+				System.out.println("Created chunk with 0!");
+				Platform.exit();
+			}
 			data = new byte[size][size];
+			for(int k = 0; k < size; k++){
+				for(int l = 0; l < size; l++){
+					data[k][l] = defaultValue;
+				}
+			}
 			lowerLeftX = i;
 			lowerLeftY = j;
 			this.size = size;
@@ -653,7 +691,7 @@ public class BigByteArray{
 		/*
 		 * The iteration when this chunk was accessed previously
 		 */
-		private long lastUsed; //potential overflow if program is running for 292 years assuming 1 iteration per nanosecond.
+		private long lastUsed;
 
 		/*
 		 * size of this chunk. used for calculating if certain value is within
@@ -763,7 +801,8 @@ public class BigByteArray{
 		 * @return
 		 */
 		public boolean contains(int x, int y){
-			if(x >= lowerLeftX && x < lowerLeftX + size && y >= lowerLeftY && y < lowerLeftY + size){
+			if(x >= lowerLeftX && x < lowerLeftX + size && y >= lowerLeftY
+					&& y < lowerLeftY + size){
 				return true;
 			}
 			return false;
@@ -775,21 +814,21 @@ public class BigByteArray{
 		}
 	}
 
-	//---------------- SWAPPINGPOLICIES -----------------------//
+	// ---------------- SWAPPINGPOLICIES -----------------------//
 
 	/*
 	 * These are not currently in use.
 	 */
 	public enum SwappingPolicy {
-		LRU, //Least recently used
-		FIFO, //first in first out
-		RR; //random replacement
+		LRU, // Least recently used
+		FIFO, // first in first out
+		RR; // random replacement
 	}
 
 	/*
 	 * For assuring path integrity
 	 */
-	private static class FileUtils{
+	private static class FileUtils {
 
 		private static String pathRemoveSlash(String path){
 			if(path.endsWith("/") || path.endsWith("\\")){
