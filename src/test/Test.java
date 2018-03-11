@@ -2,18 +2,13 @@ package test;
 
 import java.io.IOException;
 
-import arrays.BBABuilder;
-import arrays.BigByteArray;
+public class Test {
 
-public class Test{
-
-	static String[] regextest = { ".-,.,sdf-.s,-.,u", "\\//_ASD234()gdfg57_*^Å`?`=`?`?)=?#()/=%\"#¤d)=(" };
+	static String[] regextest = {	".-,.,sdf-.s,-.,u",
+									"\\//_ASD234()gdfg57_*^Å`?`=`?`?)=?#()/=%\"#¤d)=(" };
 
 	public static void main(String[] args) throws IOException{
-		//		rootTest();
 
-		BBABuilder bba = new BBABuilder();
-		BigByteArray plss = bba.setId("pls").setSize(23).build();
 	}
 	/*
 	 * public void swapTest(){ try{ // BigByteArray b = new BigByteArray(4,

@@ -10,8 +10,6 @@ import java.util.LinkedList;
 
 import javax.activation.UnsupportedDataTypeException;
 
-import javafx.application.Platform;
-
 // TODO: do not initialize first chunk! then a job can be continued from cache.
 public class BigByteArray {
 
@@ -101,7 +99,7 @@ public class BigByteArray {
 	 * recommended.
 	 */
 	public BigByteArray(int size, String id, File root, long chunksOnDisk, int chunksInMemory, byte defaultValue) throws IOException{
-		System.out.println("init with " + defaultValue);
+
 		if(root != null){
 			if(!root.isDirectory()){
 				// XXX throw new IOException("root must be a directory!");
@@ -120,7 +118,6 @@ public class BigByteArray {
 
 		this.chunkDefaultValue = defaultValue;
 		init();
-		System.out.println(chunkDefaultValue);
 	}
 
 	/*
@@ -159,14 +156,15 @@ public class BigByteArray {
 		this.current = c;
 	}
 
-	public void setLoadedChunkLimit(int i){
+	public void setLoadedChunkLimit(final int i){
 
 		if(i == 0){
-			i = 1;
+			maxChunksLoaded = 1;
 		}else if(i < 0){
-			i = -1;
+			maxChunksLoaded = -1;
+		}else{
+			maxChunksLoaded = i;
 		}
-		maxChunksLoaded = i;
 	}
 
 	/**
@@ -176,9 +174,6 @@ public class BigByteArray {
 	 * @param i
 	 */
 	public void setDiskChunkLimit(int i){
-		if(i == 0){
-			i = 1;
-		}
 		if(i < 0){
 			i = -1;
 		}
@@ -655,11 +650,6 @@ public class BigByteArray {
 		public byte defaultValue;
 
 		public Chunk(int i, int j, int size, byte defaultValue){
-			System.out.println("default:" + defaultValue);
-			if(defaultValue == 0){
-				System.out.println("Created chunk with 0!");
-				Platform.exit();
-			}
 			data = new byte[size][size];
 			for(int k = 0; k < size; k++){
 				for(int l = 0; l < size; l++){
