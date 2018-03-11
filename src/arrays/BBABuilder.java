@@ -11,6 +11,7 @@ public abstract class BBABuilder<T extends BBABuilder<T>> {
 	protected File root = new File(id);
 	protected long maxChunksOnDisk = -1;
 	protected int maxChunksLoaded = -1;
+	private byte defaultvalue = 0;
 
 	public BBABuilder(){
 
@@ -31,6 +32,11 @@ public abstract class BBABuilder<T extends BBABuilder<T>> {
 		return (T) this;
 	}
 
+	public T setDefaultValue(byte b){
+		this.defaultvalue = b;
+		return (T) this;
+	}
+
 	public T setMaxChunksOnDisk(int maxChunksOnDisk){
 		this.maxChunksOnDisk = maxChunksOnDisk;
 		return (T) this;
@@ -42,6 +48,7 @@ public abstract class BBABuilder<T extends BBABuilder<T>> {
 	}
 
 	public BigByteArray build() throws IOException{
-		return new BigByteArray(size, id, root, maxChunksOnDisk, maxChunksLoaded);
+		System.out.println("buidling");
+		return new BigByteArray(size, id, root, maxChunksOnDisk, maxChunksLoaded, defaultvalue);
 	}
 }
